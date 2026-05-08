@@ -84,7 +84,7 @@ Upon startup, HEPARA will:
 
 ## 📁 Project Structure
 
-\`\`\`text
+```bash
 ├── hepara/
 │   ├── agent.py           # Root Coordinator Agent
 │   ├── subagents/
@@ -93,7 +93,7 @@ Upon startup, HEPARA will:
 ├── main.py                # Entry point (CLI)
 ├── pyproject.toml         # Dependencies and project metadata
 └── README.md              # This file
-\`\`\`
+```
 
 ---
 
