@@ -37,27 +37,27 @@
 ### Setup
 
 1.  **Clone the repository:**
-    \`\`\`bash
+    ```bash
     git clone https://github.com/your-username/HEP-AI-Assistant.git
     cd HEP-AI-Assistant
-    \`\`\`
+    ```
 
 2.  **Sync dependencies:**
-    \`\`\`bash
+    ```bash
     uv sync
-    \`\`\`
+    ```
 
 3.  **Configure environment variables:**
-    Create a \`.env\` file in the root directory:
-    \`\`\`env
+    Create a `.env` file in the root directory:
+    ```env
     # Gemini API Key
     GOOGLE_API_KEY=your_api_key_here
 
     # User Configuration
-    AUTHOR="Your Name"
-    CATEGORIES="hep-ph, hep-th"
+    AUTHOR=your_inspirehep_author_identifier # It should be something like Joe.Smith.1 
+    CATEGORIES="hep-ph, hep-th" # The arXiv categories you are interested in
     OLLAMA_MODEL="llama3" # Used for keyword extraction via arXivFlow
-    \`\`\`
+    ```
 
 ---
 
@@ -65,9 +65,9 @@
 
 Launch the interactive assistant:
 
-\`\`\`bash
+```bash
 uv run main.py
-\`\`\`
+```
 
 Upon startup, HEPARA will:
 1.  Initialize your research session.
