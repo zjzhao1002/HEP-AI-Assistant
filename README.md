@@ -20,6 +20,7 @@
     -   **PDF Downloading:** Directly download paper PDFs to your local machine.
     -   **Trending Recommendations:** Discover the latest papers based on trending topics in your field (powered by `arxivflow`).
 -   **🤖 Intelligent Coordination:** A root agent orchestrates specialized sub-agents (`arxiv_agent`, `inspirehep_agent`) to provide seamless answers to complex research queries.
+-   **🛡️ Robust Reliability:** Enterprise-grade rate limiting and connection pooling for arXiv/INSPIRE-HEP ensures consistent operation without IP blocking.
 
 ## 🛠️ Tech Stack
 

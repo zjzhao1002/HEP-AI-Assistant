@@ -21,14 +21,23 @@ ARXIV_HEADERS = {
 }
 
 _last_request_time = 0.0
-_request_lock = asyncio.Lock()
+_arxiv_semaphore = asyncio.Semaphore(1)
 MIN_REQUEST_INTERVAL = 3.0
+_arxiv_client: Optional[httpx.AsyncClient] = None
+
+def _get_arxiv_client() -> httpx.AsyncClient:
+    """
+    Returns a shared httpx.AsyncClient instance.
+    """
+    global _arxiv_client
+    if _arxiv_client is None:
+        _arxiv_client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
+    return _arxiv_client
 
 async def search_papers(query: str, 
                         max_results: Optional[int] = None, 
                         sort_by: str = 'submittedDate', 
-                        order_by: str = 'descending',
-                        client: Optional[httpx.AsyncClient] = None
+                        order_by: str = 'descending'
                         ) -> List[Dict[str, Any]]:
     """
     Searches for papers on arXiv using the Atom API.
@@ -41,43 +50,43 @@ async def search_papers(query: str,
     if max_results:
         params["max_results"] = max_results # type: ignore
 
-    if client:
-        response = await _rate_limit_request(client=client, url=BASE_URL, params=params)
-        return _parse_arxiv_atom_response(response.text)
-    else:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as new_client:
-            response = await _rate_limit_request(client=new_client, url=BASE_URL, params=params)
-            return _parse_arxiv_atom_response(response.text)
+    client = _get_arxiv_client()
+
+    response = await _rate_limit_request(client=client, url=BASE_URL, params=params)
+    return _parse_arxiv_atom_response(response.text)
     
 async def _rate_limit_request(client: httpx.AsyncClient, url: str, params: Optional[Dict] = None) -> httpx.Response:
     global _last_request_time
 
-    # Enforce minimum interval before sending to comply with arXiv's 3s rule
-    async with _request_lock:
-        elapsed = time.monotonic() - _last_request_time
-        if elapsed < MIN_REQUEST_INTERVAL:
-            await asyncio.sleep(MIN_REQUEST_INTERVAL - elapsed)
-        _last_request_time = time.monotonic()
-
-    async with asyncio.Semaphore(3): # Only 3 tasks can enter here at once.
+    async with _arxiv_semaphore: # Strict: Only one connection at a time.
         for attempt in range(3): # Retry on timeout or 503
+            # Enforce minimum interval before EVERY attempt (including retries)
+            elapsed = time.monotonic() - _last_request_time
+            if elapsed < MIN_REQUEST_INTERVAL:
+                await asyncio.sleep(MIN_REQUEST_INTERVAL - elapsed)
+            
+            _last_request_time = time.monotonic()
+
             try:
                 response = await client.get(url, params=params, headers=ARXIV_HEADERS)
                 if response.status_code == 429:
                     print(f"arXiv is rate limiting (429). Waiting 60 seconds...")
                     await asyncio.sleep(60.0)
+                    _last_request_time = time.monotonic() # Reset timer after long wait
                     continue
                 if response.status_code == 503:
                     print("arXiv service unavailable (503). Waiting 5 seconds...")
                     await asyncio.sleep(5.0)
+                    _last_request_time = time.monotonic()
                     continue
                 
                 response.raise_for_status()
                 return response
             except (httpx.TimeoutException, httpx.NetworkError) as e:
                 if attempt < 2:
-                    print(f"arXiv request failed ({e}). Retrying in 5s...")
+                    print(f"arXiv request failed: {type(e).__name__}: {e}. Retrying in 5s...")
                     await asyncio.sleep(5.0)
+                    _last_request_time = time.monotonic()
                 else:
                     raise
 
@@ -159,8 +168,7 @@ def _parse_arxiv_atom_response(text: str) -> List[Dict[str, Any]]:
 async def download_pdf(
         arxiv_id: str,
         dirpath: str = "./",
-        filename: str = "",
-        client: Optional[httpx.AsyncClient] = None
+        filename: str = ""
     ) -> str:
     """
     Downloads the PDF for a given arXiv ID asynchronously, respecting arXiv's rate limits.
@@ -169,7 +177,7 @@ async def download_pdf(
         raise ValueError("No arXiv ID provided")
 
     # Search for the paper to get the PDF URL
-    results = await search_papers(query=f"id:{arxiv_id}", max_results=1, client=client)
+    results = await search_papers(query=f"id:{arxiv_id}", max_results=1)
     if not results:
         raise ValueError(f"Could not find paper with arXiv ID: {arxiv_id}")
 
@@ -184,15 +192,11 @@ async def download_pdf(
 
     path = os.path.join(dirpath, filename)
 
-    if client:
-        response = await _rate_limit_request(client=client, url=pdf_url)
-        with open(path, 'wb') as f:
-            f.write(response.content)
-    else:
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as new_client:
-            response = await _rate_limit_request(client=new_client, url=pdf_url)
-            with open(path, 'wb') as f:
-                f.write(response.content)
+    client = _get_arxiv_client()
+
+    response = await _rate_limit_request(client=client, url=pdf_url)
+    with open(path, 'wb') as f:
+        f.write(response.content)
 
     return path
 

@@ -10,7 +10,7 @@ download_pdf_tool = FunctionTool(func=download_pdf)
 arxiv_agent = Agent(
     model='gemini-2.5-flash',
     name='arxiv_tracker',
-    description="An arXiv tracker that can track the trending papers in the user's research field.",
+    description="An arXiv tracker that can search papers, download PDF files, track the trending papers in the user's research field.",
     instruction=ARXIV_TRACKER_PROMPT,
     tools=[recommend_by_trends_tool, search_papers_tool, download_pdf_tool],
     output_key="arxiv_report"

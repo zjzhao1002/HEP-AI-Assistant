@@ -47,6 +47,10 @@ The project uses a `.env` file for environment variables:
 - **Agent Definition:** New agents or modifications to existing ones should be done in `hepara/agent.py` or within `hepara/subagents/`.
 - **Framework Usage:** Follow `google-adk` patterns for agent creation and tool integration.
 - **Asynchronous Code:** Use `asyncio` for running agents and handling tool calls. All API-interacting tools are asynchronous.
+- **Network & Rate Limiting:** 
+    - **Shared Client:** Use a shared `httpx.AsyncClient` for sub-agents (e.g., `_get_arxiv_client` in `arxiv_agent/tools.py`) to enable connection pooling and improve performance.
+    - **Sequential Access:** Strictly adhere to provider rate limits. For arXiv, use a global `asyncio.Semaphore(1)` and a minimum 3-second request interval (`MIN_REQUEST_INTERVAL`) to prevent IP blocking.
+    - **Retry Logic:** Implement robust retry handling for `429` (Rate Limited) and `503` (Service Unavailable) errors, ensuring timing state is updated after pauses.
 
 # License
 This project is licensed under the MIT License. See the `LICENSE` file for full details.
