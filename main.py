@@ -9,6 +9,28 @@ AUTHOR=os.getenv('AUTHOR')
 from google.adk.runners import InMemoryRunner
 from google.genai.types import Content, Part
 from hepara.agent import hep_coordinator
+from hepara.subagents.inspirehep_agent.tools import track_citations_updates
+
+def print_citation_update(update: dict) -> None:
+    if "Error" in update:
+        print(f"Citation update check failed: {update['Error']}\n")
+        return
+
+    result = update.get("Result")
+    if isinstance(result, str):
+        print(f"Citation update: {result}\n")
+        return
+
+    print("Citation updates:")
+    for publication in result.get("New Publications", []): # type: ignore
+        arxiv_id = publication.get("arXiv ID", "N/A")
+        citations = publication.get("Citations", 0)
+        print(f"  New publication: {publication.get('Title', 'N/A')} ({arxiv_id}, {citations} citations)")
+    for citation in result.get("Citation Updates", []): # type: ignore
+        increase = citation.get("Increase", 0)
+        current = citation.get("Current", 0)
+        print(f"  +{increase} citations: {citation.get('Title', 'N/A')} ({current} total)")
+    print()
 
 async def main():
     print("Welcome to HEPARA!")
@@ -20,6 +42,10 @@ async def main():
     user_id = AUTHOR if AUTHOR else "Guest"
 
     await runner.session_service.create_session(app_name=runner.app_name, user_id=user_id, session_id=session_id)
+
+    print("Checking citation updates...")
+    citation_update = await track_citations_updates()
+    print_citation_update(citation_update)
 
     while True:
         try:
