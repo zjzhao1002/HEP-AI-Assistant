@@ -2,6 +2,8 @@
 
 HEPARA is a High Energy Physics AI Research Assistant that helps researchers search papers, track citations, recommend recent arXiv papers, and download PDFs. This Docker image packages the local Streamlit app together with Ollama, so users can run the assistant locally with one container.
 
+Source code and documentation are available in the GitHub repository: [zjzhao1002/HEP-AI-Assistant](https://github.com/zjzhao1002/HEP-AI-Assistant).
+
 The image includes:
 
 -   The HEPARA Streamlit web app
