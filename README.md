@@ -24,7 +24,7 @@
 
 ## 🛠️ Tech Stack
 
--   **Framework:** [Google Agent Development Kit (ADK)](https://github.com/google/adk)
+-   **Framework:** [Google Agent Development Kit (ADK)](https://github.com/google/adk-python)
 -   **Model:** Google Gemini (configurable, defaults to `gemini-2.5-flash`)
 -   **Keyword Extraction:** [arXivFlow](https://github.com/zjzhao1002/arxivflow) with Ollama for local runs or Gemini for Streamlit Community Cloud
 -   **Data Sources:** INSPIRE-HEP API, arXiv API
