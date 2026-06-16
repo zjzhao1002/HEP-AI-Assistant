@@ -10,6 +10,7 @@ dependencies = [
     "google-adk>=2.1.0",
     "google-genai>=2.6.0",
     "pandas>=3.0.2",
+    "pymupdf4llm>=1.27.2.3",
     "python-dotenv>=1.2.2",
     "streamlit>=1.57.0",
 ]

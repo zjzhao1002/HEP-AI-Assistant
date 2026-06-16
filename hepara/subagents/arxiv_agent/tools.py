@@ -6,6 +6,8 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Any, List, Optional
 from arxivflow import arXivFlow
 from collections import Counter
+from pathlib import Path
+import pymupdf4llm 
 
 CATEGORIES = os.getenv("CATEGORIES")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL")
@@ -205,6 +207,14 @@ async def download_pdf(
     with open(path, 'wb') as f:
         f.write(response.content)
 
+    try:
+        markdown = pymupdf4llm.to_markdown(path, show_progress=False)
+        markdown_path = Path(path).with_suffix(".md")
+        with open(markdown_path, 'w', encoding='utf-8') as f:
+            f.write(markdown) # type: ignore
+    except Exception as e:
+        print(f"Downloaded PDF to {path}, but failed to convert it to Markdown: {e}")
+
     return path
 
 def _calculate_relevance(row_keywords: str | list[str], search_keywords: list[str]) -> int:
@@ -313,3 +323,27 @@ async def recommend_by_trends(max_results: int=100) -> dict:
             "arxiv_id": arxiv_id,
         })
     return report
+
+def list_papers()->dict:
+    """
+    List all stored papers IDs
+    """
+    if PDF_PATH:
+        paper_path = Path(PDF_PATH)
+    else:
+        paper_path = Path.cwd()/"pdf"
+    
+    if not paper_path.exists():
+        papers = []
+    else:
+        papers = sorted([
+            p.stem 
+            for p in paper_path.iterdir()
+            if p.is_file() and p.suffix == ".pdf"
+        ])
+    return {
+        "paper_path": str(paper_path),
+        "total_papers": len(papers),
+        "papers": papers
+    }
+
