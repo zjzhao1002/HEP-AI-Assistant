@@ -4,6 +4,7 @@ from google.adk.tools.agent_tool import AgentTool
 from .subagents.inspirehep_agent.agent import inspirehep_agent
 from .subagents.arxiv_agent.agent import arxiv_agent
 from .subagents.faq_agent.agent import faq_agent
+from .subagents.pdg_agent.agent import pdg_agent
 from .prompt import HEP_COORDINATOR_PROMPT
 
 
@@ -19,6 +20,9 @@ hep_coordinator = Agent(
         and answer relevant questions.
     """,
     instruction=HEP_COORDINATOR_PROMPT,
-    tools=[AgentTool(inspirehep_agent), AgentTool(arxiv_agent), AgentTool(faq_agent)],
+    tools=[AgentTool(inspirehep_agent), 
+           AgentTool(arxiv_agent), 
+           AgentTool(faq_agent),
+           AgentTool(pdg_agent)],
 )
 
