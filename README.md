@@ -35,7 +35,7 @@
 -   **Keyword Extraction:** [arXivFlow](https://github.com/zjzhao1002/arxivflow) with Ollama for local runs or Gemini for Streamlit Community Cloud
 -   **PDF Processing:** [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) for Markdown extraction from downloaded PDFs
 -   **Local Retrieval:** [ChromaDB](https://www.trychroma.com/) for querying downloaded arXiv papers
--   **Particle Data:** [`pdg`](https://github.com/particledatagroup/api) Python API for PDG particle properties and branching fractions
+-   **Particle Data:** [pdg](https://github.com/particledatagroup/api) Python API for PDG particle properties and branching fractions
 -   **Data Sources:** INSPIRE-HEP API, arXiv API, Particle Data Group, Google Search
 -   **Environment:** Python 3.13+, [uv](https://github.com/astral-sh/uv)
 
