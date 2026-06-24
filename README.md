@@ -25,7 +25,8 @@
 -   **⚛️ PDG Particle Data:**
     -   Retrieve particle masses, decay widths, and lifetimes from the Particle Data Group database.
     -   List decay channels and branching fractions, optionally filtered by requested decay products.
--   **🤖 Intelligent Coordination:** A root agent orchestrates specialized sub-agents (`arxiv_agent`, `inspirehep_agent`, `faq_agent`, and `pdg_agent`) to provide seamless answers to complex research queries.
+-   **🔌 Optional MCP Tools:** Add local command-based MCP servers through a user-managed `mcp_list.json`; HEPARA starts normally when MCP is not configured.
+-   **🤖 Intelligent Coordination:** A root agent orchestrates its configured specialized sub-agents to provide seamless answers to complex research queries.
 -   **🛡️ Robust Reliability:** Enterprise-grade rate limiting and connection pooling for arXiv/INSPIRE-HEP ensures consistent operation without IP blocking.
 
 ## 🛠️ Tech Stack
@@ -36,6 +37,7 @@
 -   **PDF Processing:** [PyMuPDF4LLM](https://pymupdf.readthedocs.io/en/latest/pymupdf4llm/) for Markdown extraction from downloaded PDFs
 -   **Local Retrieval:** [ChromaDB](https://www.trychroma.com/) for querying downloaded arXiv papers
 -   **Particle Data:** [pdg](https://github.com/particledatagroup/api) Python API for PDG particle properties and branching fractions
+-   **External Tools:** [Model Context Protocol](https://modelcontextprotocol.io/) stdio servers configured by the user
 -   **Data Sources:** INSPIRE-HEP API, arXiv API, Particle Data Group, Google Search
 -   **Environment:** Python 3.13+, [uv](https://github.com/astral-sh/uv)
 
@@ -126,6 +128,27 @@ docker run --rm -p 8501:8501 -p 11434:11434 \
     ARXIVFLOW_KEYWORD_BACKEND="ollama"
     OLLAMA_MODEL="llama3" # Requires Ollama to be installed and running
     ```
+
+4.  **Optionally configure MCP servers:**
+    Copy the example file to the repository root and edit it with any local stdio MCP servers you want HEPARA to use:
+    ```bash
+    cp mcp_list.example.json mcp_list.json
+    ```
+
+    The supported format is:
+    ```json
+    {
+      "mcpServers": {
+        "server-name": {
+          "command": "command-to-run",
+          "args": ["optional", "arguments"],
+          "env": {"OPTIONAL_VARIABLE": "value"}
+        }
+      }
+    }
+    ```
+
+    `args` and `env` may be omitted. To keep the file elsewhere, set `MCP_LIST_PATH` to an absolute path or a path relative to the process working directory. Missing and empty configuration files simply disable MCP support; malformed files produce a warning without preventing HEPARA from starting. Restart the application after changing the MCP configuration.
 
 ---
 
@@ -225,7 +248,9 @@ Upon startup, HEPARA will:
 │   │   ├── arxiv_agent/       # arXiv search, PDF download/listing, paper analysis, Markdown extraction, and trends
 │   │   ├── faq_agent/         # General Q&A over local Chroma context with Google Search fallback
 │   │   ├── inspirehep_agent/  # INSPIRE-HEP citation tracking and graph analysis
+│   │   ├── mcp_agent/         # Optional user-configured stdio MCP tools
 │   │   └── pdg_agent/         # PDG masses, widths, lifetimes, decay channels, and branching fractions
+├── mcp_list.example.json  # Example user-managed MCP configuration
 ├── main.py                # Entry point (CLI)
 ├── streamlit_app_local.py # Entry point (local Streamlit web app)
 ├── streamlit_app_cloud.py # Entry point (Streamlit Community Cloud app)

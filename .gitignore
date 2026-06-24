@@ -36,6 +36,7 @@ ENV/
 hepara/subagents/**/*_record.json
 .python-version
 pdf/
+/mcp_list.json
 
 # Python development
 .pytest_cache/
