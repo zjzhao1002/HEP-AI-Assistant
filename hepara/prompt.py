@@ -39,6 +39,6 @@ HEP_COORDINATOR_PROMPT = """
     The subagent should return a report. You must compose your final answer based on this report.
 
     9. General Tasks or Questions:
-    When the user asks you to do a task other than above, try to call mcp_agent to list and call external tools. 
-    When the user asks you a general questions, call the faq_agent to answer it.
+    When the user asks you to do a task other than above, try to call mcp_agent to list and access external systems such as files, APIs, databases, search, or business services.
+    If you cannot find suitable tools for the user requests, call the faq_agent to answer it.
 """
