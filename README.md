@@ -25,7 +25,7 @@
 -   **⚛️ PDG Particle Data:**
     -   Retrieve particle masses, decay widths, and lifetimes from the Particle Data Group database.
     -   List decay channels and branching fractions, optionally filtered by requested decay products.
--   **🔌 Optional MCP Tools:** Add local command-based MCP servers through a user-managed `mcp_list.json`; HEPARA starts normally when MCP is not configured.
+-   **🔌 Optional MCP Tools:** Add local command-based MCP servers through a user-managed `mcp_config.json`; HEPARA creates one MCP subagent per configured server and starts normally when MCP is not configured.
 -   **🤖 Intelligent Coordination:** A root agent orchestrates its configured specialized sub-agents to provide seamless answers to complex research queries.
 -   **🛡️ Robust Reliability:** Enterprise-grade rate limiting and connection pooling for arXiv/INSPIRE-HEP ensures consistent operation without IP blocking.
 
@@ -127,19 +127,25 @@ docker run --rm -p 8501:8501 -p 11434:11434 \
     # arXivFlow keyword extraction for local Streamlit
     ARXIVFLOW_KEYWORD_BACKEND="ollama"
     OLLAMA_MODEL="llama3" # Requires Ollama to be installed and running
+
+    # Optional MCP configuration
+    MCP_PATH="./mcp_config.json"
+    SKILL_PATH="./skills"
     ```
 
 4.  **Optionally configure MCP servers:**
     Copy the example file to the repository root and edit it with any local stdio MCP servers you want HEPARA to use:
     ```bash
-    cp mcp_list.example.json mcp_list.json
+    cp mcp_config.example.json mcp_config.json
     ```
+
+    HEPARA creates a dedicated subagent for each valid entry under `mcpServers`. Server names are used as ADK agent names, so use valid Python identifiers such as `git` or `memory_server`.
 
     The supported format is:
     ```json
     {
       "mcpServers": {
-        "server-name": {
+        "server_name": {
           "command": "command-to-run",
           "args": ["optional", "arguments"],
           "env": {"OPTIONAL_VARIABLE": "value"}
@@ -148,7 +154,11 @@ docker run --rm -p 8501:8501 -p 11434:11434 \
     }
     ```
 
-    `args` and `env` may be omitted. To keep the file elsewhere, set `MCP_LIST_PATH` to an absolute path or a path relative to the process working directory. Missing and empty configuration files simply disable MCP support; malformed files produce a warning without preventing HEPARA from starting. Restart the application after changing the MCP configuration.
+    `args` and `env` may be omitted. To keep the file elsewhere, set `MCP_PATH` to an absolute path or a path relative to the process working directory. Missing and empty configuration files simply disable MCP support; malformed files produce a warning without preventing HEPARA from starting.
+
+    Skills are highly recommended for MCP tools because they give each generated subagent task-specific instructions for when and how to use its server. Set `SKILL_PATH` to a directory containing one skill folder per MCP server. Each skill folder name must exactly match the MCP server name in `mcp_config.json`; for example, the `git` MCP server uses `SKILL_PATH/git`, and `memory_server` uses `SKILL_PATH/memory_server`. If no matching skill is found, HEPARA still creates the subagent with a generic MCP-tool instruction.
+
+    Restart the application after changing the MCP configuration or MCP skills.
 
 ---
 
@@ -248,9 +258,9 @@ Upon startup, HEPARA will:
 │   │   ├── arxiv_agent/       # arXiv search, PDF download/listing, paper analysis, Markdown extraction, and trends
 │   │   ├── faq_agent/         # General Q&A over local Chroma context with Google Search fallback
 │   │   ├── inspirehep_agent/  # INSPIRE-HEP citation tracking and graph analysis
-│   │   ├── mcp_agent/         # Optional user-configured stdio MCP tools
+│   │   ├── mcp_agent/         # Optional per-server subagents for user-configured stdio MCP tools
 │   │   └── pdg_agent/         # PDG masses, widths, lifetimes, decay channels, and branching fractions
-├── mcp_list.example.json  # Example user-managed MCP configuration
+├── mcp_config.example.json  # Example user-managed MCP configuration
 ├── main.py                # Entry point (CLI)
 ├── streamlit_app_local.py # Entry point (local Streamlit web app)
 ├── streamlit_app_cloud.py # Entry point (Streamlit Community Cloud app)

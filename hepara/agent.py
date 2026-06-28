@@ -30,5 +30,5 @@ hep_coordinator = Agent(
         and answer relevant questions.
     """,
     instruction=HEP_COORDINATOR_PROMPT,
-    tools=coordinator_tools,
+    tools=coordinator_tools, # type: ignore
 )

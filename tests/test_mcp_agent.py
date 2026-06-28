@@ -6,61 +6,77 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from hepara.subagents.mcp_agent.tools import create_mcp_toolset_list, list_mcp_servers
+import hepara.subagents.mcp_agent.tools as mcp_tools_module
 
 
 class McpConfigurationTest(unittest.TestCase):
+    def _write_config(self, tmpdir: str, content: str | None) -> Path:
+        config_path = Path(tmpdir) / "mcp_config.json"
+        if content is not None:
+            config_path.write_text(content, encoding="utf-8")
+        return config_path
+
+    def _reload_tools_with_path(self, config_path: Path):
+        with patch.dict(os.environ, {"MCP_PATH": str(config_path)}, clear=False):
+            return importlib.reload(mcp_tools_module)
+
     def test_empty_mcp_configuration_disables_mcp(self):
         contents = [None, "", "   \n", "{}", '{"mcpServers": {}}']
         for content in contents:
             with self.subTest(content=content), tempfile.TemporaryDirectory() as tmpdir:
-                config_path = Path(tmpdir) / "mcp_list.json"
-                if content is not None:
-                    config_path.write_text(content, encoding="utf-8")
+                config_path = self._write_config(tmpdir, content)
+                tools_module = self._reload_tools_with_path(config_path)
 
-                self.assertEqual(create_mcp_toolset_list(config_path), [])
+                self.assertIsNone(tools_module.create_subagents())
+                self.assertEqual(
+                    tools_module.list_mcp_servers(), "No available MCP servers."
+                )
 
     def test_invalid_mcp_configuration_warns_and_disables_mcp(self):
         contents = ["{not-json", "[]", '{"servers": {}}', '{"mcpServers": []}']
         for content in contents:
             with self.subTest(content=content), tempfile.TemporaryDirectory() as tmpdir:
-                config_path = Path(tmpdir) / "mcp_list.json"
-                config_path.write_text(content, encoding="utf-8")
+                config_path = self._write_config(tmpdir, content)
+                tools_module = self._reload_tools_with_path(config_path)
 
                 with self.assertLogs(
                     "hepara.subagents.mcp_agent.tools", level="WARNING"
                 ) as logs:
-                    toolsets = create_mcp_toolset_list(config_path)
+                    subagents = tools_module.create_subagents()
 
-                self.assertEqual(toolsets, [])
+                self.assertIsNone(subagents)
                 self.assertIn(str(config_path), "\n".join(logs.output))
 
     def test_valid_stdio_servers_support_optional_args_and_env(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "mcp_list.json"
-            config_path.write_text(
+            config_path = self._write_config(
+                tmpdir,
                 json.dumps(
                     {
                         "mcpServers": {
-                            "command-only": {"command": "command-only"},
-                            "with-args": {
+                            "command_only": {"command": "command-only"},
+                            "with_args": {
                                 "command": "runner",
                                 "args": ["one", "two"],
                             },
-                            "with-env": {
+                            "with_env": {
                                 "command": "runner",
                                 "env": {"TOKEN": "value"},
                             },
                         }
                     }
                 ),
-                encoding="utf-8",
             )
+            tools_module = self._reload_tools_with_path(config_path)
 
-            toolsets = create_mcp_toolset_list(config_path)
+            subagents = tools_module.create_subagents()
 
-        self.assertEqual(len(toolsets), 3)
-        parameters = [toolset._connection_params.server_params for toolset in toolsets]
+        self.assertIsNotNone(subagents)
+        self.assertEqual(len(subagents), 3)
+        parameters = [
+            subagent.tools[0]._connection_params.server_params
+            for subagent in subagents
+        ]
         self.assertEqual(parameters[0].args, [])
         self.assertIsNone(parameters[0].env)
         self.assertEqual(parameters[1].args, ["one", "two"])
@@ -68,8 +84,8 @@ class McpConfigurationTest(unittest.TestCase):
 
     def test_invalid_server_does_not_block_valid_servers(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "mcp_list.json"
-            config_path.write_text(
+            config_path = self._write_config(
+                tmpdir,
                 json.dumps(
                     {
                         "mcpServers": {
@@ -83,15 +99,17 @@ class McpConfigurationTest(unittest.TestCase):
                         }
                     }
                 ),
-                encoding="utf-8",
             )
+            tools_module = self._reload_tools_with_path(config_path)
 
             with self.assertLogs(
                 "hepara.subagents.mcp_agent.tools", level="WARNING"
             ) as logs:
-                toolsets = create_mcp_toolset_list(config_path)
+                subagents = tools_module.create_subagents()
 
-        self.assertEqual(len(toolsets), 1)
+        self.assertIsNotNone(subagents)
+        self.assertEqual(len(subagents), 1)
+        self.assertEqual(subagents[0].name, "valid")
         log_text = "\n".join(logs.output)
         self.assertIn("missing-command", log_text)
         self.assertIn("invalid-args", log_text)
@@ -99,8 +117,8 @@ class McpConfigurationTest(unittest.TestCase):
 
     def test_list_mcp_servers_only_reports_valid_servers(self):
         with tempfile.TemporaryDirectory() as tmpdir:
-            config_path = Path(tmpdir) / "mcp_list.json"
-            config_path.write_text(
+            config_path = self._write_config(
+                tmpdir,
                 json.dumps(
                     {
                         "mcpServers": {
@@ -113,28 +131,28 @@ class McpConfigurationTest(unittest.TestCase):
                         }
                     }
                 ),
-                encoding="utf-8",
             )
+            tools_module = self._reload_tools_with_path(config_path)
 
             with self.assertLogs(
                 "hepara.subagents.mcp_agent.tools", level="WARNING"
             ):
-                servers = list_mcp_servers(config_path)
+                servers = tools_module.list_mcp_servers()
 
-        self.assertEqual(servers, "valid")
+        self.assertEqual(servers, "valid\n")
 
-    def test_mcp_list_path_uses_override_and_expands_home(self):
-        import hepara.subagents.mcp_agent.agent as mcp_agent_module
-
-        with patch.dict(os.environ, {"MCP_LIST_PATH": "~/configs/mcp.json"}):
+    def test_mcp_path_uses_override_and_expands_home(self):
+        with patch.dict(os.environ, {"MCP_PATH": "~/configs/mcp.json"}):
+            tools_module = importlib.reload(mcp_tools_module)
             self.assertEqual(
-                mcp_agent_module.get_mcp_list_path(),
+                tools_module._get_mcp_path(),
                 Path("~/configs/mcp.json").expanduser(),
             )
 
-        with patch.dict(os.environ, {"MCP_LIST_PATH": "configs/mcp.json"}):
+        with patch.dict(os.environ, {"MCP_PATH": "configs/mcp.json"}):
+            tools_module = importlib.reload(mcp_tools_module)
             self.assertEqual(
-                mcp_agent_module.get_mcp_list_path(),
+                tools_module._get_mcp_path(),
                 Path.cwd() / "configs/mcp.json",
             )
 
@@ -144,33 +162,27 @@ class McpConfigurationTest(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             missing_path = Path(tmpdir) / "missing.json"
-            valid_path = Path(tmpdir) / "valid.json"
-            valid_path.write_text(
-                json.dumps(
-                    {"mcpServers": {"example": {"command": "runner"}}}
-                ),
-                encoding="utf-8",
+            valid_path = self._write_config(
+                tmpdir,
+                json.dumps({"mcpServers": {"example": {"command": "runner"}}}),
             )
 
-            with patch.dict(
-                os.environ, {"MCP_LIST_PATH": str(missing_path)}, clear=False
-            ):
+            with patch.dict(os.environ, {"MCP_PATH": str(missing_path)}, clear=False):
+                importlib.reload(mcp_tools_module)
                 importlib.reload(mcp_agent_module)
                 importlib.reload(root_agent_module)
                 names = [tool.name for tool in root_agent_module.hep_coordinator.tools]
                 self.assertNotIn("mcp_agent", names)
 
-            with patch.dict(
-                os.environ, {"MCP_LIST_PATH": str(valid_path)}, clear=False
-            ):
+            with patch.dict(os.environ, {"MCP_PATH": str(valid_path)}, clear=False):
+                importlib.reload(mcp_tools_module)
                 importlib.reload(mcp_agent_module)
                 importlib.reload(root_agent_module)
                 names = [tool.name for tool in root_agent_module.hep_coordinator.tools]
                 self.assertIn("mcp_agent", names)
 
-            with patch.dict(
-                os.environ, {"MCP_LIST_PATH": str(missing_path)}, clear=False
-            ):
+            with patch.dict(os.environ, {"MCP_PATH": str(missing_path)}, clear=False):
+                importlib.reload(mcp_tools_module)
                 importlib.reload(mcp_agent_module)
                 importlib.reload(root_agent_module)
 
