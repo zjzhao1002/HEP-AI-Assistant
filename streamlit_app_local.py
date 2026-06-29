@@ -15,6 +15,7 @@ from google.genai.types import Content, Part
 APP_NAME = "HEPARA"
 SESSION_ID = "streamlit_session"
 ENV_PATH = Path(".env")
+DISABLED_MCP_PATH = "__hepara_streamlit_mcp_disabled__.json"
 
 GOOGLE_MODEL_OPTIONS = [
     "gemini-2.5-flash",
@@ -109,6 +110,8 @@ def apply_environment(config: dict[str, str]) -> None:
             os.environ[key] = value
         else:
             os.environ.pop(key, None)
+    os.environ["MCP_PATH"] = DISABLED_MCP_PATH
+    os.environ.pop("SKILL_PATH", None)
 
 
 def save_environment(config: dict[str, str]) -> None:
@@ -128,10 +131,18 @@ def reload_agent_modules():
     import hepara.subagents.inspirehep_agent.agent
     import hepara.subagents.inspirehep_agent.prompt
     import hepara.subagents.inspirehep_agent.tools
+    import hepara.subagents.mcp_agent.agent
+    import hepara.subagents.mcp_agent.prompt
+    import hepara.subagents.mcp_agent.subagents
+    import hepara.subagents.mcp_agent.tools
     import hepara.subagents.pdg_agent.agent
     import hepara.subagents.pdg_agent.prompt
     import hepara.subagents.pdg_agent.tools
 
+    importlib.reload(hepara.subagents.mcp_agent.subagents)
+    importlib.reload(hepara.subagents.mcp_agent.tools)
+    importlib.reload(hepara.subagents.mcp_agent.prompt)
+    importlib.reload(hepara.subagents.mcp_agent.agent)
     importlib.reload(hepara.subagents.arxiv_agent.tools)
     importlib.reload(hepara.subagents.faq_agent.tools)
     importlib.reload(hepara.subagents.faq_agent.prompt)
